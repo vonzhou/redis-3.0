@@ -810,7 +810,7 @@ void activeExpireCycle(int type) {
             long long now, ttl_sum;
             int ttl_samples;
 
-            /* If there is nothing to expire try next DB ASAP. */
+            /* 如果该db没有设置过期key，则继续看下个db*/
             if ((num = dictSize(db->expires)) == 0) {
                 db->avg_ttl = 0;
                 break;
@@ -831,7 +831,7 @@ void activeExpireCycle(int type) {
             ttl_samples = 0;
 
             if (num > ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP)
-                num = ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP;
+                num = ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP;// 20
 
             while (num--) {
                 dictEntry *de;
@@ -862,15 +862,15 @@ void activeExpireCycle(int type) {
              * expire. So after a given amount of milliseconds return to the
              * caller waiting for the other active expire cycle. */
             iteration++;
-            if ((iteration & 0xf) == 0) { /* check once every 16 iterations. */
+            if ((iteration & 0xf) == 0) { /* 每迭代16次检查一次 */
                 long long elapsed = ustime()-start;
 
                 latencyAddSampleIfNeeded("expire-cycle",elapsed/1000);
                 if (elapsed > timelimit) timelimit_exit = 1;
             }
+			// 超过时间限制则退出
             if (timelimit_exit) return;
-            /* We don't repeat the cycle if there are less than 25% of keys
-             * found expired in the current DB. */
+            /* 在当前db中，如果少于25%的key过期，则停止继续删除过期key */
         } while (expired > ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP/4);
     }
 }
